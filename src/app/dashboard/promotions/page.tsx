@@ -1,135 +1,118 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import {
-  Plus,
-  Percent,
-  Gift,
-  Tag,
-  Users,
-  Eye,
-  CheckCircle2,
-  CalendarDays,
-} from "lucide-react";
+import { Plus, Users, Clock, Gift } from "lucide-react";
 
 const promotions = [
   {
-    name: "Welcome Back Offer",
-    description: "15% off next order",
+    title: "Welcome Back Offer",
+    description: "15% off your next order",
     target: "Inactive customers",
-    status: "Active" as const,
+    status: "Active",
     expiry: "Expires in 5 days",
-    stats: { targeted: 12, redeemed: 4 },
-    icon: Percent,
+    targeted: 12,
+    redeemed: 4,
   },
   {
-    name: "Weekend Special",
+    title: "Weekend Special",
     description: "Buy 2 get 1 free on pastries",
     target: "All customers",
-    status: "Active" as const,
+    status: "Active",
     expiry: "Expires in 2 days",
-    stats: { views: 45, redeemed: 18 },
-    icon: Gift,
+    targeted: 45,
+    redeemed: 18,
   },
   {
-    name: "Loyalty Milestone",
+    title: "Loyalty Milestone",
     description: "Free upgrade to large",
     target: "Customers with 4+ loyalty points",
-    status: "Ended" as const,
+    status: "Ended",
     expiry: "Ran for 7 days",
-    stats: { redeemed: 23 },
-    icon: Tag,
+    targeted: 34,
+    redeemed: 23,
   },
 ];
 
 export default function PromotionsPage() {
   return (
-    <div className="space-y-8">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Promotions</h1>
-        <p className="text-muted-foreground mt-1">
-          Create and manage targeted promotions to boost engagement and sales.
-        </p>
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex items-center justify-end">
-        <Button>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Promotions</h1>
+          <p className="text-muted-foreground mt-1">Create and manage promotional campaigns</p>
+        </div>
+        <Button className="gap-2">
           <Plus className="h-4 w-4" />
           Create Promotion
         </Button>
       </div>
 
-      {/* Promotions Grid */}
-      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-        {promotions.map((promo) => (
-          <Card key={promo.name}>
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-                  <promo.icon className="h-5 w-5 text-secondary-foreground" />
-                </div>
-                <Badge
-                  variant={promo.status === "Active" ? "default" : "secondary"}
-                  className={cn(
-                    promo.status === "Active" &&
-                      "bg-emerald-500/15 text-emerald-700 border-emerald-500/20 dark:text-emerald-400 border"
-                  )}
-                >
-                  {promo.status}
-                </Badge>
-              </div>
-              <CardTitle className="mt-2">{promo.name}</CardTitle>
-              <CardDescription>{promo.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {/* Target */}
-                <div className="flex items-center gap-2 text-sm">
-                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-muted-foreground">Target:</span>
-                  <span className="font-medium">{promo.target}</span>
+      {/* Promotions List */}
+      <div className="space-y-4">
+        {promotions.map((promo) => {
+          const isActive = promo.status === "Active";
+          const redemptionRate = promo.targeted > 0 ? (promo.redeemed / promo.targeted) * 100 : 0;
+
+          return (
+            <Card
+              key={promo.title}
+              className={`transition-all hover:shadow-md ${!isActive ? "opacity-75" : ""}`}
+              style={isActive ? { borderLeft: "4px solid #16a34a" } : { borderLeft: "4px solid #e2d5c3" }}
+            >
+              <CardContent className="p-6">
+                {/* Top Row */}
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 className="text-lg font-semibold">{promo.title}</h3>
+                    <p className="text-muted-foreground">{promo.description}</p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium ${
+                      isActive
+                        ? "border-[#16a34a]/20 bg-[#16a34a]/10 text-[#16a34a]"
+                        : "border-border bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {promo.status}
+                  </span>
                 </div>
 
-                {/* Expiry */}
-                <div className="flex items-center gap-2 text-sm">
-                  <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-muted-foreground">{promo.expiry}</span>
-                </div>
-
-                {/* Stats */}
-                <div className="mt-4 flex items-center gap-4 rounded-lg border border-border p-3 text-sm">
-                  {"targeted" in promo.stats && (
-                    <div>
-                      <span className="font-bold">{promo.stats.targeted}</span>
-                      <span className="text-muted-foreground"> targeted</span>
-                    </div>
-                  )}
-                  {"views" in promo.stats && (
-                    <div className="flex items-center gap-1">
-                      <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-bold">{promo.stats.views}</span>
-                      <span className="text-muted-foreground">views</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="font-bold">{promo.stats.redeemed}</span>
-                    <span className="text-muted-foreground">redeemed</span>
+                {/* Stats Row */}
+                <div className="flex flex-wrap gap-6 mb-4 text-sm">
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Users className="h-3.5 w-3.5" />
+                    <span>{promo.target}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>{promo.expiry}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Gift className="h-3.5 w-3.5" />
+                    <span>{promo.redeemed} redeemed of {promo.targeted} targeted</span>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+
+                {/* Progress Bar */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Redemption Rate</span>
+                    <span>{Math.round(redemptionRate)}%</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${redemptionRate}%`,
+                        backgroundColor: isActive ? "#16a34a" : "#8b7355",
+                      }}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

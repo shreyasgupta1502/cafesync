@@ -10,175 +10,144 @@ import {
   IndianRupee,
   ShoppingCart,
   Users,
-  TrendingUp,
   Award,
   Coffee,
 } from "lucide-react";
 
-// ── Mock data (will be replaced with real database data later) ──
 const stats = [
   {
     title: "Today's Revenue",
     value: "₹12,450",
     change: "+18% from yesterday",
     icon: IndianRupee,
-    trend: "up" as const,
+    accent: "#6f4e37",
   },
   {
     title: "Orders Today",
     value: "47",
     change: "+5 from yesterday",
     icon: ShoppingCart,
-    trend: "up" as const,
+    accent: "#d97706",
   },
   {
     title: "Active Customers",
     value: "234",
     change: "12 new this week",
     icon: Users,
-    trend: "up" as const,
+    accent: "#16a34a",
   },
   {
     title: "Rewards Redeemed",
     value: "8",
     change: "3 pending",
     icon: Award,
-    trend: "neutral" as const,
+    accent: "#d4a76a",
   },
 ];
 
 const recentOrders = [
-  {
-    id: "ORD-001",
-    customer: "Rahul Sharma",
-    items: "Cappuccino, Croissant",
-    amount: "₹320",
-    time: "2 min ago",
-    status: "completed",
-  },
-  {
-    id: "ORD-002",
-    customer: "Priya Patel",
-    items: "Latte, Blueberry Muffin",
-    amount: "₹280",
-    time: "15 min ago",
-    status: "completed",
-  },
-  {
-    id: "ORD-003",
-    customer: "Amit Kumar",
-    items: "Espresso x2",
-    amount: "₹200",
-    time: "28 min ago",
-    status: "completed",
-  },
-  {
-    id: "ORD-004",
-    customer: "Sneha Reddy",
-    items: "Mocha, Sandwich",
-    amount: "₹420",
-    time: "45 min ago",
-    status: "completed",
-  },
-  {
-    id: "ORD-005",
-    customer: "Vikram Singh",
-    items: "Cold Brew",
-    amount: "₹180",
-    time: "1 hour ago",
-    status: "completed",
-  },
+  { customer: "Rahul Sharma", items: "Cappuccino, Croissant", amount: "₹320", time: "2 min ago" },
+  { customer: "Priya Patel", items: "Latte, Blueberry Muffin", amount: "₹280", time: "15 min ago" },
+  { customer: "Amit Kumar", items: "Espresso x2", amount: "₹200", time: "28 min ago" },
+  { customer: "Sneha Reddy", items: "Mocha, Sandwich", amount: "₹420", time: "45 min ago" },
+  { customer: "Vikram Singh", items: "Cold Brew", amount: "₹180", time: "1 hour ago" },
 ];
 
 const topProducts = [
-  { name: "Cappuccino", orders: 156, revenue: "₹23,400" },
-  { name: "Latte", orders: 132, revenue: "₹19,800" },
-  { name: "Espresso", orders: 98, revenue: "₹9,800" },
-  { name: "Cold Brew", orders: 87, revenue: "₹15,660" },
-  { name: "Croissant", orders: 76, revenue: "₹7,600" },
+  { name: "Cappuccino", orders: 156 },
+  { name: "Latte", orders: 132 },
+  { name: "Espresso", orders: 98 },
+  { name: "Cold Brew", orders: 87 },
+  { name: "Croissant", orders: 76 },
 ];
 
 const loyaltyAlerts = [
-  {
-    customer: "Rahul Sharma",
-    message: "1 coffee away from free drink!",
-    progress: "5/6",
-  },
-  {
-    customer: "Meera Joshi",
-    message: "Reward ready to redeem",
-    progress: "6/6",
-  },
-  {
-    customer: "Arjun Nair",
-    message: "Halfway to reward",
-    progress: "3/6",
-  },
+  { customer: "Rahul Sharma", message: "1 coffee away from free drink!", current: 5, target: 6 },
+  { customer: "Meera Joshi", message: "Reward ready to redeem", current: 6, target: 6 },
+  { customer: "Arjun Nair", message: "Halfway to reward", current: 3, target: 6 },
 ];
 
+function initials(name: string) {
+  const parts = name.split(" ");
+  return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
+}
+
+function LoyaltyDots({ current, target }: { current: number; target: number }) {
+  return (
+    <div className="flex gap-1">
+      {Array.from({ length: target }).map((_, i) => (
+        <div
+          key={i}
+          className={`h-2 w-2 rounded-full ${
+            i < current ? "bg-warning" : "bg-border"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
+  const maxOrders = topProducts[0].orders;
+
   return (
     <div className="space-y-8">
-      {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground mt-1">
-          Welcome back! Here&apos;s what&apos;s happening at Cafe Sunshine
-          today.
+          Good morning! Here&apos;s your cafe overview.
         </p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Card key={stat.title}>
+          <Card key={stat.title} style={{ borderLeft: `4px solid ${stat.accent}` }}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
               </CardTitle>
-              <stat.icon className="h-4 w-4 text-muted-foreground" />
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-lg"
+                style={{ backgroundColor: `${stat.accent}1a` }}
+              >
+                <stat.icon className="h-4 w-4" style={{ color: stat.accent }} />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {stat.change}
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Recent Orders - takes 2 columns */}
+        {/* Recent Orders */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Recent Orders</CardTitle>
             <CardDescription>Latest orders from your customers</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentOrders.map((order) => (
+            <div className="space-y-1">
+              {recentOrders.map((order, i) => (
                 <div
-                  key={order.id}
-                  className="flex items-center justify-between border-b border-border pb-4 last:border-0 last:pb-0"
+                  key={i}
+                  className="flex items-center justify-between rounded-lg px-3 py-3 transition-colors hover:bg-secondary/50"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
-                      <Coffee className="h-5 w-5 text-secondary-foreground" />
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                      {initials(order.customer)}
                     </div>
                     <div>
                       <p className="text-sm font-medium">{order.customer}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {order.items}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{order.items}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium">{order.amount}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {order.time}
-                    </p>
+                    <p className="text-sm font-semibold">{order.amount}</p>
+                    <p className="text-xs text-muted-foreground">{order.time}</p>
                   </div>
                 </div>
               ))}
@@ -186,7 +155,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Right Column */}
         <div className="space-y-6">
           {/* Top Products */}
           <Card>
@@ -195,23 +163,24 @@ export default function DashboardPage() {
               <CardDescription>Best sellers this month</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {topProducts.map((product, index) => (
-                  <div
-                    key={product.name}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                        {index + 1}
-                      </span>
-                      <span className="text-sm font-medium">
-                        {product.name}
-                      </span>
+                  <div key={product.name} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+                          {index + 1}
+                        </span>
+                        <span className="font-medium">{product.name}</span>
+                      </div>
+                      <span className="text-muted-foreground">{product.orders}</span>
                     </div>
-                    <span className="text-sm text-muted-foreground">
-                      {product.orders} sold
-                    </span>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${(product.orders / maxOrders) * 100}%` }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -222,30 +191,24 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Loyalty Alerts</CardTitle>
-              <CardDescription>
-                Customers close to rewards
-              </CardDescription>
+              <CardDescription>Customers close to rewards</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {loyaltyAlerts.map((alert) => (
                   <div
                     key={alert.customer}
-                    className="flex items-center justify-between rounded-lg border border-border p-3"
+                    className="rounded-lg border border-border p-3"
+                    style={{ backgroundColor: "#d4a76a10" }}
                   >
-                    <div>
+                    <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-medium">{alert.customer}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {alert.message}
-                      </p>
+                      <Badge variant={alert.current === alert.target ? "default" : "secondary"}>
+                        {alert.current}/{alert.target}
+                      </Badge>
                     </div>
-                    <Badge
-                      variant={
-                        alert.progress === "6/6" ? "default" : "secondary"
-                      }
-                    >
-                      {alert.progress}
-                    </Badge>
+                    <p className="text-xs text-muted-foreground mb-2">{alert.message}</p>
+                    <LoyaltyDots current={alert.current} target={alert.target} />
                   </div>
                 ))}
               </div>
