@@ -1,253 +1,32 @@
-"use client";
-
-import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/supabase/server";
+import { DEMO_CAFE_ID } from "@/lib/types";
 import { CustomerNav } from "@/components/customer-nav";
-import { ShoppingCart, Plus, Minus, X } from "lucide-react";
+import { MenuClient } from "./menu-client";
 
-const categories = ["All", "Hot Coffee", "Cold Coffee", "Tea", "Pastries", "Snacks"];
+export default async function CustomerMenuPage() {
+  const supabase = await createClient();
 
-const products = [
-  { id: 1, name: "Cappuccino", emoji: "☕", price: 150, category: "Hot Coffee", desc: "Classic Italian coffee with steamed milk" },
-  { id: 2, name: "Latte", emoji: "☕", price: 160, category: "Hot Coffee", desc: "Smooth espresso with creamy milk" },
-  { id: 3, name: "Espresso", emoji: "⚡", price: 100, category: "Hot Coffee", desc: "Strong and bold single shot" },
-  { id: 4, name: "Cold Brew", emoji: "🧊", price: 180, category: "Cold Coffee", desc: "Slow-steeped for 12 hours" },
-  { id: 5, name: "Iced Mocha", emoji: "🍫", price: 200, category: "Cold Coffee", desc: "Chocolate meets coffee over ice" },
-  { id: 6, name: "Masala Chai", emoji: "🍵", price: 80, category: "Tea", desc: "Traditional Indian spiced tea" },
-  { id: 7, name: "Croissant", emoji: "🥐", price: 120, category: "Pastries", desc: "Buttery, flaky French pastry" },
-  { id: 8, name: "Blueberry Muffin", emoji: "🫐", price: 100, category: "Pastries", desc: "Fresh blueberry with crumble top" },
-  { id: 9, name: "Chicken Sandwich", emoji: "🥪", price: 180, category: "Snacks", desc: "Grilled chicken with fresh veggies" },
-  { id: 10, name: "Paneer Wrap", emoji: "🌯", price: 160, category: "Snacks", desc: "Spiced paneer in a whole wheat wrap" },
-];
+  // Fetch categories
+  const { data: categories } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("cafe_id", DEMO_CAFE_ID)
+    .order("sort_order");
 
-type CartItem = { id: number; name: string; price: number; emoji: string; qty: number };
-
-export default function CustomerMenuPage() {
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [showCart, setShowCart] = useState(false);
-  const [orderPlaced, setOrderPlaced] = useState(false);
-
-  const filtered =
-    activeCategory === "All"
-      ? products
-      : products.filter((p) => p.category === activeCategory);
-
-  const addToCart = (product: typeof products[0]) => {
-    setCart((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.id === product.id ? { ...item, qty: item.qty + 1 } : item
-        );
-      }
-      return [...prev, { id: product.id, name: product.name, price: product.price, emoji: product.emoji, qty: 1 }];
-    });
-  };
-
-  const updateQty = (id: number, delta: number) => {
-    setCart((prev) =>
-      prev
-        .map((item) => (item.id === id ? { ...item, qty: item.qty + delta } : item))
-        .filter((item) => item.qty > 0)
-    );
-  };
-
-  const totalItems = cart.reduce((s, i) => s + i.qty, 0);
-  const totalPrice = cart.reduce((s, i) => s + i.price * i.qty, 0);
-
-  const getCartQty = (id: number) => cart.find((i) => i.id === id)?.qty ?? 0;
-
-  const handlePlaceOrder = () => {
-    setOrderPlaced(true);
-    setCart([]);
-    setTimeout(() => setOrderPlaced(false), 4000);
-  };
+  // Fetch products with their category name
+  const { data: products } = await supabase
+    .from("products")
+    .select("*, categories(name)")
+    .eq("cafe_id", DEMO_CAFE_ID)
+    .order("name");
 
   return (
     <div className="min-h-screen bg-background">
       <CustomerNav />
-
-      <div className="mx-auto max-w-5xl px-6 py-8">
-        {/* Order Success Toast */}
-        {orderPlaced && (
-          <div className="mb-6 rounded-xl border border-[#16a34a]/30 bg-[#16a34a]/10 px-5 py-4 text-center">
-            <p className="text-sm font-semibold text-[#16a34a]">
-              Order placed successfully! Your loyalty progress has been updated.
-            </p>
-          </div>
-        )}
-
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Our Menu</h1>
-          <p className="text-muted-foreground mt-1">
-            Fresh, handcrafted beverages and snacks made with love
-          </p>
-        </div>
-
-        {/* Category Filters */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
-                activeCategory === cat
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-secondary text-secondary-foreground hover:bg-accent"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Product Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((product) => {
-            const cartQty = getCartQty(product.id);
-            return (
-              <Card
-                key={product.id}
-                className="group transition-all hover:shadow-lg hover:-translate-y-0.5"
-              >
-                <CardContent className="p-5">
-                  {/* Emoji */}
-                  <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-2xl bg-secondary transition-transform group-hover:scale-105">
-                    <span className="text-5xl">{product.emoji}</span>
-                  </div>
-
-                  {/* Info */}
-                  <div className="text-center space-y-1.5">
-                    <h3 className="font-semibold text-lg">{product.name}</h3>
-                    <p className="text-xs text-muted-foreground">{product.desc}</p>
-                    <p className="text-xl font-bold text-primary">₹{product.price}</p>
-                    <Badge variant="secondary" className="text-[11px]">{product.category}</Badge>
-                  </div>
-
-                  {/* Add to Cart */}
-                  <div className="mt-4">
-                    {cartQty === 0 ? (
-                      <Button
-                        className="w-full gap-2"
-                        onClick={() => addToCart(product)}
-                      >
-                        <Plus className="h-4 w-4" />
-                        Add to Order
-                      </Button>
-                    ) : (
-                      <div className="flex items-center justify-center gap-3">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-9 w-9"
-                          onClick={() => updateQty(product.id, -1)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="w-8 text-center text-lg font-bold">{cartQty}</span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-9 w-9"
-                          onClick={() => updateQty(product.id, 1)}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Floating Cart Bar */}
-      {totalItems > 0 && !showCart && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <button
-            onClick={() => setShowCart(true)}
-            className="flex items-center gap-4 rounded-full bg-primary px-8 py-4 text-primary-foreground shadow-2xl transition-transform hover:scale-105"
-          >
-            <ShoppingCart className="h-5 w-5" />
-            <span className="font-semibold">{totalItems} items</span>
-            <span className="font-bold">₹{totalPrice}</span>
-            <span className="text-sm">View Order →</span>
-          </button>
-        </div>
-      )}
-
-      {/* Cart Drawer */}
-      {showCart && (
-        <div className="fixed inset-0 z-50">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setShowCart(false)}
-          />
-          {/* Panel */}
-          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-card shadow-2xl flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <h2 className="text-lg font-bold">Your Order</h2>
-              <button
-                onClick={() => setShowCart(false)}
-                className="rounded-lg p-1.5 hover:bg-secondary transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Items */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-              {cart.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 rounded-lg bg-secondary/50 p-3">
-                  <span className="text-2xl">{item.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">₹{item.price} each</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => updateQty(item.id, -1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-full border border-border hover:bg-secondary transition-colors"
-                    >
-                      <Minus className="h-3 w-3" />
-                    </button>
-                    <span className="w-5 text-center text-sm font-bold">{item.qty}</span>
-                    <button
-                      onClick={() => updateQty(item.id, 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-full border border-border hover:bg-secondary transition-colors"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                  </div>
-                  <p className="text-sm font-bold min-w-[50px] text-right">₹{item.price * item.qty}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Footer */}
-            <div className="border-t border-border p-6 space-y-4">
-              <div className="flex justify-between text-lg font-bold">
-                <span>Total</span>
-                <span className="text-primary">₹{totalPrice}</span>
-              </div>
-              <Button className="w-full h-12 text-base font-semibold" onClick={handlePlaceOrder}>
-                Place Order
-              </Button>
-              <p className="text-center text-xs text-muted-foreground">
-                This order counts toward your loyalty reward!
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <MenuClient
+        categories={categories ?? []}
+        products={products ?? []}
+      />
     </div>
   );
 }

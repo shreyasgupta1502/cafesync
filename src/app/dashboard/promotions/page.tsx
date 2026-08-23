@@ -1,41 +1,20 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
+import { DEMO_CAFE_ID } from "@/lib/types";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Users, Clock, Gift } from "lucide-react";
 
-const promotions = [
-  {
-    title: "Welcome Back Offer",
-    description: "15% off your next order",
-    target: "Inactive customers",
-    status: "Active",
-    expiry: "Expires in 5 days",
-    targeted: 12,
-    redeemed: 4,
-  },
-  {
-    title: "Weekend Special",
-    description: "Buy 2 get 1 free on pastries",
-    target: "All customers",
-    status: "Active",
-    expiry: "Expires in 2 days",
-    targeted: 45,
-    redeemed: 18,
-  },
-  {
-    title: "Loyalty Milestone",
-    description: "Free upgrade to large",
-    target: "Customers with 4+ loyalty points",
-    status: "Ended",
-    expiry: "Ran for 7 days",
-    targeted: 34,
-    redeemed: 23,
-  },
-];
+export default async function PromotionsPage() {
+  const supabase = await createClient();
 
-export default function PromotionsPage() {
+  const { data: promotions } = await supabase
+    .from("promotions")
+    .select("*")
+    .eq("cafe_id", DEMO_CAFE_ID)
+    .order("created_at", { ascending: false });
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Promotions</h1>
@@ -47,20 +26,31 @@ export default function PromotionsPage() {
         </Button>
       </div>
 
-      {/* Promotions List */}
       <div className="space-y-4">
-        {promotions.map((promo) => {
-          const isActive = promo.status === "Active";
-          const redemptionRate = promo.targeted > 0 ? (promo.redeemed / promo.targeted) * 100 : 0;
+        {promotions?.map((promo) => {
+          const isActive = promo.is_active;
+          const redemptionRate =
+            promo.total_targeted > 0
+              ? (promo.total_redeemed / promo.total_targeted) * 100
+              : 0;
+
+          const endDate = promo.end_date ? new Date(promo.end_date) : null;
+          const now = new Date();
+          const daysLeft = endDate
+            ? Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+            : null;
 
           return (
             <Card
-              key={promo.title}
+              key={promo.id}
               className={`transition-all hover:shadow-md ${!isActive ? "opacity-75" : ""}`}
-              style={isActive ? { borderLeft: "4px solid #16a34a" } : { borderLeft: "4px solid #e2d5c3" }}
+              style={
+                isActive
+                  ? { borderLeft: "4px solid #16a34a" }
+                  : { borderLeft: "4px solid #e2d5c3" }
+              }
             >
               <CardContent className="p-6">
-                {/* Top Row */}
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h3 className="text-lg font-semibold">{promo.title}</h3>
@@ -73,27 +63,33 @@ export default function PromotionsPage() {
                         : "border-border bg-muted text-muted-foreground"
                     }`}
                   >
-                    {promo.status}
+                    {isActive ? "Active" : "Ended"}
                   </span>
                 </div>
 
-                {/* Stats Row */}
                 <div className="flex flex-wrap gap-6 mb-4 text-sm">
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Users className="h-3.5 w-3.5" />
-                    <span>{promo.target}</span>
+                    <span>{promo.target_segment ?? "All"} customers</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Clock className="h-3.5 w-3.5" />
-                    <span>{promo.expiry}</span>
+                    <span>
+                      {isActive && daysLeft !== null
+                        ? `Expires in ${daysLeft} days`
+                        : !isActive
+                        ? "Ended"
+                        : "No expiry"}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Gift className="h-3.5 w-3.5" />
-                    <span>{promo.redeemed} redeemed of {promo.targeted} targeted</span>
+                    <span>
+                      {promo.total_redeemed} redeemed of {promo.total_targeted} targeted
+                    </span>
                   </div>
                 </div>
 
-                {/* Progress Bar */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Redemption Rate</span>

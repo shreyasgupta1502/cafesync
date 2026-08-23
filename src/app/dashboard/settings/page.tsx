@@ -1,22 +1,39 @@
+import { createClient } from "@/lib/supabase/server";
+import { DEMO_CAFE_ID } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Coffee, Bell, Shield } from "lucide-react";
 
-const profileFields = [
-  { label: "Cafe Name", value: "Cafe Sunshine" },
-  { label: "Email", value: "owner@cafesunshine.com" },
-  { label: "Phone", value: "+91 98765 43210" },
-  { label: "Address", value: "MG Road, Bangalore" },
-];
+export default async function SettingsPage() {
+  const supabase = await createClient();
 
-const notifications = [
-  { label: "Order Confirmations", status: "Enabled" },
-  { label: "Loyalty Updates", status: "Enabled" },
-  { label: "Promotional Messages", status: "Enabled" },
-  { label: "WhatsApp Integration", status: "Coming Soon" },
-];
+  const { data: cafe } = await supabase
+    .from("cafes")
+    .select("*")
+    .eq("id", DEMO_CAFE_ID)
+    .single();
 
-export default function SettingsPage() {
+  const { data: loyaltyProgram } = await supabase
+    .from("loyalty_programs")
+    .select("*")
+    .eq("cafe_id", DEMO_CAFE_ID)
+    .eq("is_active", true)
+    .single();
+
+  const profileFields = [
+    { label: "Cafe Name", value: cafe?.name ?? "—" },
+    { label: "Email", value: cafe?.email ?? "—" },
+    { label: "Phone", value: cafe?.phone ?? "—" },
+    { label: "Address", value: cafe?.address ?? "—" },
+  ];
+
+  const notifications = [
+    { label: "Order Confirmations", status: "Enabled" },
+    { label: "Loyalty Updates", status: "Enabled" },
+    { label: "Promotional Messages", status: "Enabled" },
+    { label: "WhatsApp Integration", status: "Coming Soon" },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -66,11 +83,12 @@ export default function SettingsPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-5">
-            {/* Visual Cups */}
             <div className="text-center">
-              <p className="text-lg font-bold mb-3">Buy 6, Get 1 Free</p>
+              <p className="text-lg font-bold mb-3">
+                Buy {loyaltyProgram?.target_count ?? 6}, Get 1 Free
+              </p>
               <div className="flex items-center justify-center gap-2">
-                {Array.from({ length: 6 }).map((_, i) => (
+                {Array.from({ length: loyaltyProgram?.target_count ?? 6 }).map((_, i) => (
                   <div
                     key={i}
                     className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-xl"
@@ -85,18 +103,17 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Config Details */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Type</Label>
                 <div className="rounded-lg bg-secondary px-3 py-2 text-sm font-medium">
-                  Purchase Count
+                  {loyaltyProgram?.type === "purchase_count" ? "Purchase Count" : "Spend Amount"}
                 </div>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Status</Label>
                 <div className="rounded-lg bg-[#16a34a]/10 px-3 py-2 text-sm font-medium text-[#16a34a]">
-                  Active
+                  {loyaltyProgram?.is_active ? "Active" : "Inactive"}
                 </div>
               </div>
             </div>
