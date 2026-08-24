@@ -15,16 +15,18 @@ export async function sendWhatsAppNotification(
     const formattedTo = to.startsWith("whatsapp:") ? to : `whatsapp:${to}`;
     const formattedFrom = `whatsapp:${whatsappNumber}`;
 
+    console.log("Sending WhatsApp:", { to: formattedTo, from: formattedFrom });
+
     const messageResponse = await client.messages.create({
       body: message,
       from: formattedFrom,
       to: formattedTo,
     });
 
-    console.log("WhatsApp sent:", messageResponse.sid);
+    console.log("WhatsApp sent successfully:", messageResponse.sid);
     return { success: true };
   } catch (error: any) {
-    console.error("WhatsApp Error:", error.message);
+    console.error("WhatsApp Error:", error);
     return { success: false, error: error.message };
   }
 }
