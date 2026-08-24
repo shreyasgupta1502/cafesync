@@ -45,6 +45,7 @@ export default function AIInsightsPage() {
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [error, setError] = useState("");
+  const [executing, setExecuting] = useState<number | null>(null);
 
   const runAnalysis = async () => {
     setLoading(true);
@@ -136,6 +137,42 @@ export default function AIInsightsPage() {
       setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const executeCampaign = async (insight: Insight, index: number) => {
+    setExecuting(index);
+    
+    try {
+      const response = await fetch("/api/ai/execute-campaign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          insight,
+          ownerResponse: "Approved and executing campaign",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to execute campaign");
+      }
+
+      const data = await response.json();
+      
+      // Show success message
+      alert(`Campaign executed! Created promotion and sent ${data.notificationsSent} notifications.`);
+      
+      // Remove the insight from the list since it's been executed
+      if (analysis) {
+        setAnalysis({
+          ...analysis,
+          insights: analysis.insights.filter((_, i) => i !== index),
+        });
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to execute campaign");
+    } finally {
+      setExecuting(null);
     }
   };
 
@@ -257,10 +294,29 @@ export default function AIInsightsPage() {
                           </div>
                         )}
 
-                        <div className="rounded-lg bg-secondary/50 px-3 py-2">
+                        <div className="rounded-lg bg-secondary/50 px-3 py-2 mb-3">
                           <p className="text-xs text-muted-foreground mb-0.5">Recommended Action:</p>
                           <p className="text-sm font-medium italic">{insight.recommendation}</p>
                         </div>
+
+                        <Button
+                          onClick={() => executeCampaign(insight, i)}
+                          disabled={executing === i}
+                          className="w-full gap-2"
+                          variant={insight.priority === "high" ? "default" : "outline"}
+                        >
+                          {executing === i ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Executing Campaign...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-4 w-4" />
+                              Approve & Execute Campaign
+                            </>
+                          )}
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
