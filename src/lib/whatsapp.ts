@@ -17,8 +17,10 @@ export async function sendWhatsAppNotification(
 
     console.log("Sending WhatsApp:", { to: formattedTo, from: formattedFrom });
 
+    // Twilio sandbox requires ContentSid (pre-approved template)
+    // Using the sample template from Twilio
     const messageResponse = await client.messages.create({
-      body: message,
+      contentSid: "HXfe5ab5f00277942d4d4200328b4d403c", // Twilio sample template
       from: formattedFrom,
       to: formattedTo,
     });
