@@ -18,8 +18,11 @@ export default function Home() {
             <Link href="/menu">
               <Button variant="ghost" className="text-sm">View Menu</Button>
             </Link>
-            <Link href="/dashboard">
-              <Button className="text-sm">Owner Dashboard</Button>
+            <Link href="/login">
+              <Button variant="outline" className="text-sm">Sign In</Button>
+            </Link>
+            <Link href="/signup">
+              <Button className="text-sm">Sign Up</Button>
             </Link>
           </div>
         </div>

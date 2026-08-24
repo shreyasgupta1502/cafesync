@@ -23,8 +23,23 @@ const navItems = [
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
-export function Sidebar() {
+export function Sidebar({
+  userName,
+  cafeName,
+  cafeAddress,
+}: {
+  userName: string;
+  cafeName: string;
+  cafeAddress: string;
+}) {
   const pathname = usePathname();
+
+  const initials = userName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   return (
     <aside className="flex h-screen w-64 flex-col bg-sidebar">
@@ -34,9 +49,7 @@ export function Sidebar() {
           <Coffee className="h-5 w-5 text-sidebar-primary-foreground" />
         </div>
         <div>
-          <span className="text-lg font-bold text-sidebar-foreground">
-            CafeSync
-          </span>
+          <span className="text-lg font-bold text-sidebar-foreground">CafeSync</span>
           <p className="text-[11px] text-sidebar-foreground/50 -mt-0.5">Management</p>
         </div>
       </div>
@@ -96,13 +109,11 @@ export function Sidebar() {
       <div className="border-t border-sidebar-border p-3">
         <div className="flex items-center gap-3 rounded-lg px-3 py-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground">
-            CS
+            {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-sidebar-foreground truncate">
-              Cafe Sunshine
-            </p>
-            <p className="text-[11px] text-sidebar-foreground/50 truncate">MG Road, Bangalore</p>
+            <p className="text-sm font-semibold text-sidebar-foreground truncate">{cafeName}</p>
+            <p className="text-[11px] text-sidebar-foreground/50 truncate">{cafeAddress}</p>
           </div>
         </div>
       </div>
