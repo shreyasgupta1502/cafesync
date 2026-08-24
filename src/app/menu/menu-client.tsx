@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Plus, Minus, X } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import type { Category, Product } from "@/lib/types";
 
 type CartItem = { id: string; name: string; price: number; emoji: string; qty: number };
@@ -20,8 +22,16 @@ export function MenuClient({
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [isGuest, setIsGuest] = useState(true);
 
   const categoryNames = ["All", ...categories.map((c) => c.name)];
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsGuest(!user);
+    });
+  }, []);
 
   const filtered =
     activeCategory === "All"
@@ -66,10 +76,30 @@ export function MenuClient({
     <div className="mx-auto max-w-5xl px-6 py-8">
       {/* Order Success Toast */}
       {orderPlaced && (
-        <div className="mb-6 rounded-xl border border-[#16a34a]/30 bg-[#16a34a]/10 px-5 py-4 text-center">
-          <p className="text-sm font-semibold text-[#16a34a]">
-            Order placed successfully! Your loyalty progress has been updated.
+        <div className="mb-6 rounded-xl border border-[#16a34a]/30 bg-[#16a34a]/10 px-5 py-4">
+          <p className="text-sm font-semibold text-[#16a34a] text-center mb-2">
+            Order placed successfully!
           </p>
+          {isGuest && (
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-3">
+                Sign up to earn loyalty rewards and track your orders!
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                <Link href="/signup">
+                  <Button size="sm" className="text-xs h-8">Create Account</Button>
+                </Link>
+                <Link href="/login">
+                  <Button variant="outline" size="sm" className="text-xs h-8">Sign In</Button>
+                </Link>
+              </div>
+            </div>
+          )}
+          {!isGuest && (
+            <p className="text-xs text-muted-foreground text-center">
+              Your loyalty progress has been updated.
+            </p>
+          )}
         </div>
       )}
 
