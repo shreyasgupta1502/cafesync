@@ -124,9 +124,8 @@ export function MenuClient({
           await supabase
             .from("loyalty_progress")
             .update({
-              current_count: 0, // Reset to 0
+              current_count: targetCount, // Keep at target, don't reset yet
               is_reward_ready: true,
-              rewards_earned: loyaltyProgress.rewards_earned + 1,
             })
             .eq("customer_id", user.id);
         } else {
