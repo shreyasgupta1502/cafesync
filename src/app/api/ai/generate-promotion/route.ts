@@ -34,7 +34,7 @@ Respond ONLY with valid JSON in this exact format:
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },
       ],
-      model: "llama-3.1-70b-versatile",
+      model: "openai/gpt-oss-120b",
       temperature: 0.7,
       max_tokens: 500,
     });
