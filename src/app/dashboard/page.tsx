@@ -1,3 +1,5 @@
+import { createClient } from "@/lib/supabase/server";
+import { DEMO_CAFE_ID } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -13,59 +15,6 @@ import {
   Award,
   Coffee,
 } from "lucide-react";
-
-const stats = [
-  {
-    title: "Today's Revenue",
-    value: "₹12,450",
-    change: "+18% from yesterday",
-    icon: IndianRupee,
-    accent: "#6f4e37",
-  },
-  {
-    title: "Orders Today",
-    value: "47",
-    change: "+5 from yesterday",
-    icon: ShoppingCart,
-    accent: "#d97706",
-  },
-  {
-    title: "Active Customers",
-    value: "234",
-    change: "12 new this week",
-    icon: Users,
-    accent: "#16a34a",
-  },
-  {
-    title: "Rewards Redeemed",
-    value: "8",
-    change: "3 pending",
-    icon: Award,
-    accent: "#d4a76a",
-  },
-];
-
-const recentOrders = [
-  { customer: "Rahul Sharma", items: "Cappuccino, Croissant", amount: "₹320", time: "2 min ago" },
-  { customer: "Priya Patel", items: "Latte, Blueberry Muffin", amount: "₹280", time: "15 min ago" },
-  { customer: "Amit Kumar", items: "Espresso x2", amount: "₹200", time: "28 min ago" },
-  { customer: "Sneha Reddy", items: "Mocha, Sandwich", amount: "₹420", time: "45 min ago" },
-  { customer: "Vikram Singh", items: "Cold Brew", amount: "₹180", time: "1 hour ago" },
-];
-
-const topProducts = [
-  { name: "Cappuccino", orders: 156 },
-  { name: "Latte", orders: 132 },
-  { name: "Espresso", orders: 98 },
-  { name: "Cold Brew", orders: 87 },
-  { name: "Croissant", orders: 76 },
-];
-
-const loyaltyAlerts = [
-  { customer: "Rahul Sharma", message: "1 coffee away from free drink!", current: 5, target: 6 },
-  { customer: "Meera Joshi", message: "Reward ready to redeem", current: 6, target: 6 },
-  { customer: "Arjun Nair", message: "Halfway to reward", current: 3, target: 6 },
-];
 
 function initials(name: string) {
   const parts = name.split(" ");
@@ -87,8 +36,127 @@ function LoyaltyDots({ current, target }: { current: number; target: number }) {
   );
 }
 
-export default function DashboardPage() {
-  const maxOrders = topProducts[0].orders;
+export default async function DashboardPage() {
+  const supabase = await createClient();
+
+  // Get today's stats
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const { data: todayOrders } = await supabase
+    .from("orders")
+    .select("total_amount")
+    .eq("cafe_id", DEMO_CAFE_ID)
+    .gte("created_at", today.toISOString());
+
+  const todayRevenue = todayOrders?.reduce((sum, o) => sum + Number(o.total_amount), 0) ?? 0;
+  const todayOrderCount = todayOrders?.length ?? 0;
+
+  // Get total active customers (have ordered in last 30 days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { count: activeCustomers } = await supabase
+    .from("orders")
+    .select("customer_id", { count: "exact", head: true })
+    .eq("cafe_id", DEMO_CAFE_ID)
+    .gte("created_at", thirtyDaysAgo.toISOString());
+
+  // Get rewards redeemed today (simplified: rewards earned)
+  const { data: loyaltyData } = await supabase
+    .from("loyalty_progress")
+    .select("rewards_earned")
+    .gt("rewards_earned", 0);
+
+  const totalRewards = loyaltyData?.reduce((sum, l) => sum + l.rewards_earned, 0) ?? 0;
+
+  // Get recent orders with customer info
+  const { data: recentOrders } = await supabase
+    .from("orders")
+    .select(`
+      id,
+      total_amount,
+      created_at,
+      profiles!inner(full_name),
+      order_items(product_name)
+    `)
+    .eq("cafe_id", DEMO_CAFE_ID)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  // Get top products (most ordered)
+  const { data: topProductsData } = await supabase
+    .from("order_items")
+    .select("product_name")
+    .limit(1000);
+
+  const productCounts: Record<string, number> = {};
+  topProductsData?.forEach((item) => {
+    productCounts[item.product_name] = (productCounts[item.product_name] || 0) + 1;
+  });
+
+  const topProducts = Object.entries(productCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([name, count]) => ({ name, orders: count }));
+
+  const maxOrders = topProducts[0]?.orders ?? 1;
+
+  // Get loyalty alerts (customers close to rewards)
+  const { data: loyaltyAlerts } = await supabase
+    .from("loyalty_progress")
+    .select(`
+      current_count,
+      profiles!inner(full_name),
+      loyalty_programs!inner(target_count)
+    `)
+    .gte("current_count", 3)
+    .order("current_count", { ascending: false })
+    .limit(3);
+
+  const stats = [
+    {
+      title: "Today's Revenue",
+      value: `₹${todayRevenue.toLocaleString()}`,
+      change: `${todayOrderCount} orders`,
+      icon: IndianRupee,
+      accent: "#6f4e37",
+    },
+    {
+      title: "Orders Today",
+      value: todayOrderCount.toString(),
+      change: "from customers",
+      icon: ShoppingCart,
+      accent: "#d97706",
+    },
+    {
+      title: "Active Customers",
+      value: (activeCustomers ?? 0).toString(),
+      change: "last 30 days",
+      icon: Users,
+      accent: "#16a34a",
+    },
+    {
+      title: "Total Rewards Earned",
+      value: totalRewards.toString(),
+      change: "lifetime",
+      icon: Award,
+      accent: "#d4a76a",
+    },
+  ];
+
+  function getRelativeTime(dateString: string) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    return `${Math.floor(diffHours / 24)} day${Math.floor(diffHours / 24) > 1 ? "s" : ""} ago`;
+  }
 
   return (
     <div className="space-y-8">
@@ -131,26 +199,30 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              {recentOrders.map((order, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between rounded-lg px-3 py-3 transition-colors hover:bg-secondary/50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                      {initials(order.customer)}
+              {recentOrders?.map((order) => {
+                const customerName = (order.profiles as any)?.full_name ?? "Guest";
+                const items = (order.order_items as any[])?.map((i) => i.product_name).join(", ") ?? "—";
+                return (
+                  <div
+                    key={order.id}
+                    className="flex items-center justify-between rounded-lg px-3 py-3 transition-colors hover:bg-secondary/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                        {initials(customerName)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{customerName}</p>
+                        <p className="text-xs text-muted-foreground truncate max-w-xs">{items}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">{order.customer}</p>
-                      <p className="text-xs text-muted-foreground">{order.items}</p>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold">₹{order.total_amount}</p>
+                      <p className="text-xs text-muted-foreground">{getRelativeTime(order.created_at)}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold">{order.amount}</p>
-                    <p className="text-xs text-muted-foreground">{order.time}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -195,22 +267,33 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {loyaltyAlerts.map((alert) => (
-                  <div
-                    key={alert.customer}
-                    className="rounded-lg border border-border p-3"
-                    style={{ backgroundColor: "#d4a76a10" }}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium">{alert.customer}</p>
-                      <Badge variant={alert.current === alert.target ? "default" : "secondary"}>
-                        {alert.current}/{alert.target}
-                      </Badge>
+                {loyaltyAlerts?.map((alert, i) => {
+                  const customerName = (alert.profiles as any)?.full_name ?? "Customer";
+                  const target = (alert.loyalty_programs as any)?.target_count ?? 6;
+                  const current = alert.current_count;
+                  const remaining = target - current;
+                  
+                  return (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-border p-3"
+                      style={{ backgroundColor: "#d4a76a10" }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-medium">{customerName}</p>
+                        <Badge variant={current >= target ? "default" : "secondary"}>
+                          {current}/{target}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {remaining === 0
+                          ? "Reward ready!"
+                          : `${remaining} ${remaining === 1 ? "coffee" : "coffees"} away from reward`}
+                      </p>
+                      <LoyaltyDots current={current} target={target} />
                     </div>
-                    <p className="text-xs text-muted-foreground mb-2">{alert.message}</p>
-                    <LoyaltyDots current={alert.current} target={alert.target} />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
