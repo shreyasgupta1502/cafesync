@@ -65,7 +65,100 @@ export function MenuClient({
   const totalPrice = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const getCartQty = (id: string) => cart.find((i) => i.id === id)?.qty ?? 0;
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
+    const supabase = createClient();
+    
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // Create the order
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .insert({
+        cafe_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        customer_id: user?.id ?? null,
+        total_amount: totalPrice,
+        status: "completed",
+      })
+      .select()
+      .single();
+
+    if (orderError || !order) {
+      console.error("Failed to create order:", orderError);
+      return;
+    }
+
+    // Create order items
+    const orderItems = cart.map((item) => ({
+      order_id: order.id,
+      product_id: item.id,
+      product_name: item.name,
+      quantity: item.qty,
+      unit_price: item.price,
+      subtotal: item.price * item.qty,
+    }));
+
+    const { error: itemsError } = await supabase
+      .from("order_items")
+      .insert(orderItems);
+
+    if (itemsError) {
+      console.error("Failed to create order items:", itemsError);
+    }
+
+    // Update loyalty progress if user is logged in
+    if (user) {
+      // Get current loyalty progress
+      const { data: loyaltyProgress } = await supabase
+        .from("loyalty_progress")
+        .select("*, loyalty_programs!inner(target_count)")
+        .eq("customer_id", user.id)
+        .single();
+
+      if (loyaltyProgress) {
+        const targetCount = (loyaltyProgress.loyalty_programs as any)?.target_count ?? 6;
+        const newCount = loyaltyProgress.current_count + 1;
+        
+        // Check if they've earned a reward
+        if (newCount >= targetCount) {
+          await supabase
+            .from("loyalty_progress")
+            .update({
+              current_count: 0, // Reset to 0
+              is_reward_ready: true,
+              rewards_earned: loyaltyProgress.rewards_earned + 1,
+            })
+            .eq("customer_id", user.id);
+        } else {
+          await supabase
+            .from("loyalty_progress")
+            .update({
+              current_count: newCount,
+              is_reward_ready: false,
+            })
+            .eq("customer_id", user.id);
+        }
+      } else {
+        // First order - create loyalty progress
+        const { data: program } = await supabase
+          .from("loyalty_programs")
+          .select("id")
+          .eq("cafe_id", "a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+          .eq("is_active", true)
+          .single();
+
+        if (program) {
+          await supabase.from("loyalty_progress").insert({
+            program_id: program.id,
+            customer_id: user.id,
+            current_count: 1,
+            is_reward_ready: false,
+            rewards_earned: 0,
+          });
+        }
+      }
+    }
+
     setOrderPlaced(true);
     setCart([]);
     setShowCart(false);

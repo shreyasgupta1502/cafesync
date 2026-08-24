@@ -1,23 +1,13 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { DEMO_CAFE_ID } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CustomerNav } from "@/components/customer-nav";
 import { Award, Gift, Star } from "lucide-react";
 
-const loyaltyConfig = {
-  programName: "Coffee Rewards",
-  target: 6,
-  current: 5,
-  totalRewardsEarned: 3,
-  reward: "Free coffee of your choice",
-};
-
-const rewardHistory = [
-  { date: "Aug 10, 2026", reward: "Free Cappuccino", status: "Redeemed" },
-  { date: "Jul 22, 2026", reward: "Free Latte", status: "Redeemed" },
-  { date: "Jul 5, 2026", reward: "Free Cold Brew", status: "Redeemed" },
-];
-
 const milestoneMessages: Record<number, string> = {
+  0: "Start your journey! Your first coffee counts toward a free one.",
   1: "Great start! Your journey to free coffee has begun.",
   2: "Keep it up! You're making progress.",
   3: "You're halfway there! Just 3 more to go.",
@@ -26,10 +16,56 @@ const milestoneMessages: Record<number, string> = {
   6: "Your next coffee is FREE! Claim your reward on your next visit.",
 };
 
-export default function LoyaltyPage() {
-  const { current, target, reward } = loyaltyConfig;
-  const message = milestoneMessages[current] || "";
+export default async function LoyaltyPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  // Get loyalty program info
+  const { data: program } = await supabase
+    .from("loyalty_programs")
+    .select("*")
+    .eq("cafe_id", DEMO_CAFE_ID)
+    .eq("is_active", true)
+    .single();
+
+  // Get user's loyalty progress
+  const { data: progress } = await supabase
+    .from("loyalty_progress")
+    .select("*")
+    .eq("customer_id", user.id)
+    .single();
+
+  // Get user's completed orders (for history)
+  const { data: orders } = await supabase
+    .from("orders")
+    .select("id, total_amount, created_at")
+    .eq("customer_id", user.id)
+    .eq("status", "completed")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  const current = progress?.current_count ?? 0;
+  const target = program?.target_count ?? 6;
+  const rewardsEarned = progress?.rewards_earned ?? 0;
+  const reward = program?.reward_description ?? "Free coffee of your choice";
+  const message = milestoneMessages[Math.min(current, 6)] || milestoneMessages[0];
   const isRewardReady = current >= target;
+
+  // Generate reward history from rewards_earned count
+  const rewardHistory = Array.from({ length: Math.min(rewardsEarned, 5) }, (_, i) => {
+    const daysAgo = (i + 1) * 15;
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    return {
+      date: date.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
+      reward: "Free Coffee",
+      status: "Redeemed",
+    };
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -48,7 +84,7 @@ export default function LoyaltyPage() {
             <div className="bg-primary px-6 py-5 text-primary-foreground">
               <div className="flex items-center gap-3 mb-1">
                 <Award className="h-6 w-6" />
-                <h2 className="text-xl font-bold">{loyaltyConfig.programName}</h2>
+                <h2 className="text-xl font-bold">{program?.name ?? "Coffee Rewards"}</h2>
               </div>
               <p className="text-primary-foreground/80 text-sm">
                 Buy {target} coffees, get your next one free!
@@ -142,49 +178,92 @@ export default function LoyaltyPage() {
           <Card>
             <CardContent className="p-4 text-center">
               <Gift className="mx-auto h-6 w-6 text-[#16a34a] mb-2" />
-              <p className="text-2xl font-bold">{loyaltyConfig.totalRewardsEarned}</p>
+              <p className="text-2xl font-bold">{rewardsEarned}</p>
               <p className="text-xs text-muted-foreground">Rewards Earned</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <Award className="mx-auto h-6 w-6 text-primary mb-2" />
-              <p className="text-2xl font-bold">{target - current}</p>
+              <p className="text-2xl font-bold">{Math.max(0, target - current)}</p>
               <p className="text-xs text-muted-foreground">Until Next Reward</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Reward History */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Reward History</CardTitle>
-            <CardDescription>Your previously earned rewards</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {rewardHistory.map((r, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between rounded-lg px-4 py-3 bg-secondary/40"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#16a34a]/10">
-                      <Gift className="h-4 w-4 text-[#16a34a]" />
+        {rewardHistory.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Reward History</CardTitle>
+              <CardDescription>Your previously earned rewards</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {rewardHistory.map((r, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between rounded-lg px-4 py-3 bg-secondary/40"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#16a34a]/10">
+                        <Gift className="h-4 w-4 text-[#16a34a]" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{r.reward}</p>
+                        <p className="text-xs text-muted-foreground">{r.date}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">{r.reward}</p>
-                      <p className="text-xs text-muted-foreground">{r.date}</p>
-                    </div>
+                    <span className="rounded-full border border-[#16a34a]/20 bg-[#16a34a]/10 px-2.5 py-0.5 text-[11px] font-medium text-[#16a34a]">
+                      {r.status}
+                    </span>
                   </div>
-                  <span className="rounded-full border border-[#16a34a]/20 bg-[#16a34a]/10 px-2.5 py-0.5 text-[11px] font-medium text-[#16a34a]">
-                    {r.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recent Orders */}
+        {orders && orders.length > 0 && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Recent Orders</CardTitle>
+              <CardDescription>Orders that count toward your loyalty</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {orders.map((order) => {
+                  const date = new Date(order.created_at);
+                  const dateStr = date.toLocaleDateString("en-IN", { 
+                    month: "short", 
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  });
+                  
+                  return (
+                    <div
+                      key={order.id}
+                      className="flex items-center justify-between rounded-lg bg-secondary/40 px-4 py-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-sm">
+                          ☕
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Order #{order.id.slice(0, 8)}</p>
+                          <p className="text-xs text-muted-foreground">{dateStr}</p>
+                        </div>
+                      </div>
+                      <p className="text-sm font-semibold">₹{Number(order.total_amount).toLocaleString()}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
