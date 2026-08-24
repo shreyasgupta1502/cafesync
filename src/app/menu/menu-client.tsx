@@ -158,6 +158,34 @@ export function MenuClient({
       }
     }
 
+    // Send WhatsApp notification if user is logged in
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, phone")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.phone) {
+        const itemsList = cart.map(item => `${item.name} x${item.qty}`).join(", ");
+        
+        // Send WhatsApp (fire and forget, don't block the UI)
+        fetch("/api/send-whatsapp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: profile.phone,
+            type: "order_confirmation",
+            data: {
+              customerName: profile.full_name,
+              orderTotal: totalPrice,
+              items: itemsList,
+            },
+          }),
+        }).catch(err => console.error("WhatsApp failed:", err));
+      }
+    }
+
     setOrderPlaced(true);
     setCart([]);
     setShowCart(false);

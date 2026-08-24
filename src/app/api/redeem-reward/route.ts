@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { sendWhatsAppNotification, templates } from "@/lib/whatsapp";
 
 export async function POST(request: Request) {
   try {
     const { customerId } = await request.json();
     const supabase = await createClient();
 
-    // Get customer's loyalty progress
+    // Get customer's loyalty progress and profile
     const { data: progress } = await supabase
       .from("loyalty_progress")
       .select("*, loyalty_programs!inner(target_count, cafe_id)")
@@ -28,6 +29,13 @@ export async function POST(request: Request) {
     }
 
     const cafeId = (progress.loyalty_programs as any).cafe_id;
+
+    // Get customer profile for WhatsApp
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, phone")
+      .eq("id", customerId)
+      .single();
 
     // Reset loyalty counter and increment rewards earned
     const { error: updateError } = await supabase
@@ -53,6 +61,12 @@ export async function POST(request: Request) {
       channel: "in_app",
       is_read: false,
     });
+
+    // Send WhatsApp notification
+    if (profile?.phone) {
+      const message = templates.rewardEarned(profile.full_name);
+      await sendWhatsAppNotification(profile.phone, message);
+    }
 
     return NextResponse.json({
       success: true,
