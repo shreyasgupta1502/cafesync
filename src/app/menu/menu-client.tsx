@@ -169,7 +169,9 @@ export function MenuClient({
       if (profile?.phone) {
         const itemsList = cart.map(item => `${item.name} x${item.qty}`).join(", ");
         
-        // Send WhatsApp (fire and forget, don't block the UI)
+        console.log("Sending WhatsApp to:", profile.phone);
+        
+        // Send WhatsApp
         fetch("/api/send-whatsapp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -182,7 +184,12 @@ export function MenuClient({
               items: itemsList,
             },
           }),
-        }).catch(err => console.error("WhatsApp failed:", err));
+        })
+        .then(res => res.json())
+        .then(data => console.log("WhatsApp result:", data))
+        .catch(err => console.error("WhatsApp failed:", err));
+      } else {
+        console.log("No phone number for user:", user.id);
       }
     }
 
