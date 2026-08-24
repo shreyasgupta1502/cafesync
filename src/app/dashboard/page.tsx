@@ -15,6 +15,7 @@ import {
   Award,
   Coffee,
 } from "lucide-react";
+import { RevenueChart, OrdersChart } from "@/components/charts";
 
 function initials(name: string) {
   const parts = name.split(" ");
@@ -102,6 +103,41 @@ export default async function DashboardPage() {
 
   const maxOrders = topProducts[0]?.orders ?? 1;
 
+  // Get last 7 days data for charts
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  const { data: last7DaysOrders } = await supabase
+    .from("orders")
+    .select("created_at, total_amount")
+    .eq("cafe_id", DEMO_CAFE_ID)
+    .gte("created_at", sevenDaysAgo.toISOString());
+
+  // Process data for charts
+  const dailyData: Record<string, { revenue: number; orders: number }> = {};
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+    dailyData[dateStr] = { revenue: 0, orders: 0 };
+  }
+
+  last7DaysOrders?.forEach((order) => {
+    const date = new Date(order.created_at);
+    const dateStr = date.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+    if (dailyData[dateStr]) {
+      dailyData[dateStr].revenue += Number(order.total_amount);
+      dailyData[dateStr].orders += 1;
+    }
+  });
+
+  const chartData = Object.entries(dailyData).map(([date, data]) => ({
+    date,
+    revenue: Math.round(data.revenue),
+    orders: data.orders,
+  }));
+
   // Get loyalty alerts (customers close to rewards)
   const { data: loyaltyAlerts } = await supabase
     .from("loyalty_progress")
@@ -188,6 +224,29 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Analytics Charts */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Revenue Trend</CardTitle>
+            <CardDescription>Last 7 days</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RevenueChart data={chartData} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Order Volume</CardTitle>
+            <CardDescription>Last 7 days</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <OrdersChart data={chartData} />
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
