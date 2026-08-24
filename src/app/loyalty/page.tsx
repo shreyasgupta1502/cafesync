@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { CustomerNav } from "@/components/customer-nav";
 import { Award, Gift, Star } from "lucide-react";
+import { RedeemRewardButton } from "@/components/redeem-reward-button";
 
 const milestoneMessages: Record<number, string> = {
   0: "Start your journey! Your first coffee counts toward a free one.",
@@ -162,6 +163,9 @@ export default async function LoyaltyPage() {
                   </p>
                 )}
               </div>
+
+              {/* Redeem Button */}
+              <RedeemRewardButton userId={user.id} isRewardReady={isRewardReady} />
             </div>
           </CardContent>
         </Card>
