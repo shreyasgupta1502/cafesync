@@ -12,6 +12,7 @@ import {
   Brain,
   Settings,
   Sparkles,
+  CloudSun,
 } from "lucide-react";
 
 const navItems = [
@@ -20,6 +21,7 @@ const navItems = [
   { label: "Customers", href: "/dashboard/customers", icon: Users },
   { label: "Orders", href: "/dashboard/orders", icon: ClipboardList },
   { label: "Promotions", href: "/dashboard/promotions", icon: Megaphone },
+  { label: "Weather", href: "/dashboard/weather", icon: CloudSun },
   { label: "AI Promotion", href: "/dashboard/ai-promotion", icon: Sparkles },
   { label: "AI Insights", href: "/dashboard/ai-insights", icon: Brain },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
